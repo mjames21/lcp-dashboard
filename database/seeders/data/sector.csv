@@ -1,0 +1,9 @@
+id,main_sector,sector,mda_name,mda_acronym,created_at,updated_at
+1,Agriculture,Agriculture,"Ministry of Agriculture and Forestry",MAF,NULL,NULL
+2,"Communication Technology","Communication Technology","Ministry of Technology and Communication",MOCTI,NULL,NULL
+3,Education,Education,"Ministry of Basic and Senior School Education",MBSSE,NULL,NULL
+4,Energy,Energy,"Ministry of Energy",MOE,NULL,NULL
+5,Finance,Finance,"Ministry of Finance",MOF,NULL,NULL
+6,Health,Health,"Ministry of Health and Sanitation",MOHS,NULL,NULL
+7,"Tourism and Culture","Tourism and Culture","Ministry of Tourism and Culture",MTC,NULL,NULL
+8,"Trade and Industry","Trade and Industry","Ministry of Trade and Industry",MTI,NULL,NULL
