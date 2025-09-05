@@ -13,13 +13,14 @@ return new class extends Migration
     {
         Schema::table('key_issues', function (Blueprint $table) {
             //
-            
+            /*
                 $table->foreignId('council_id')
                     ->nullable()
                     ->after('id')
                     ->constrained('location_councils')
                     ->nullOnDelete()
                     ->index();
+                    */
                     $table->text('severity')->nullable();
                    // $table->text('status')->nullable();
                     $table->date('resolved_at')->nullable();
