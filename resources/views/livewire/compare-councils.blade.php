@@ -18,27 +18,12 @@
                 <input type="date" wire:model.live="periodEnd"
                        class="mt-0.5 border rounded-lg px-2 py-1.5 text-sm" />
             </label>
-
-            {{-- Quick ranges --}}
-            <div class="flex items-center gap-1.5 pl-2">
-                <button type="button"
-                        wire:click="$set('periodStart','{{ now()->startOfMonth()->toDateString() }}'); $set('periodEnd','{{ now()->endOfMonth()->toDateString() }}')"
-                        class="border rounded-full px-2.5 py-1 text-xs hover:bg-gray-50">This month</button>
-
-                <button type="button"
-                        wire:click="$set('periodStart','{{ now()->copy()->subMonths(2)->startOfMonth()->toDateString() }}'); $set('periodEnd','{{ now()->endOfMonth()->toDateString() }}')"
-                        class="border rounded-full px-2.5 py-1 text-xs hover:bg-gray-50">Last 3 mo</button>
-
-                <button type="button"
-                        wire:click="$set('periodStart','{{ now()->startOfYear()->toDateString() }}'); $set('periodEnd','{{ now()->endOfYear()->toDateString() }}')"
-                        class="border rounded-full px-2.5 py-1 text-xs hover:bg-gray-50">YTD</button>
-            </div>
         </div>
     </div>
 
     {{-- Filters / Controls --}}
     <div class="bg-white border rounded-xl shadow-sm p-5 mb-6">
-        {{-- Tabs --}}
+        {{-- Tabs (active: gray-800) --}}
         <div class="flex gap-2 mb-5">
             <button type="button"
                     wire:click="$set('mode','indicator')"
@@ -58,11 +43,17 @@
                            {{ $mode==='project' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200' }}">
                 Projects
             </button>
+            <button type="button"
+                    wire:click="$set('mode','issue')"
+                    class="px-3 py-1.5 text-sm rounded-lg border transition
+                           {{ $mode==='issue' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200' }}">
+                Issues
+            </button>
         </div>
 
         {{-- Row 1: side-by-side lists / controls --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {{-- Councils --}}
+            {{-- Councils (compact width) --}}
             <label class="block">
                 <span class="text-xs text-gray-600">Councils</span>
                 <select wire:model.live="councilIds" multiple size="10"
@@ -85,7 +76,7 @@
                         <select wire:model.live="indicatorIds" multiple size="10"
                                 class="mt-1 w-full max-w-[18rem] border rounded-lg px-2 py-1.5">
                             @foreach($indicators as $i)
-                                <option value="{{ $i['id'] }}">{{ $i['name'] }}{{ $i['unit'] ? ' ('.$i['unit'].')' : '' }}</option>
+                                <option value="{{ $i['id'] }}">{{ $i['name'] }}@if($i['unit']) ({{ $i['unit'] }})@endif</option>
                             @endforeach
                         </select>
                         <div class="text-[11px] text-gray-500 mt-1">
@@ -133,12 +124,38 @@
                         </select>
                     </label>
                 @endif
+
+                {{-- Issue controls --}}
+                @if($mode === 'issue')
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[36rem]">
+                        <label class="block">
+                            <span class="text-xs text-gray-600">Status</span>
+                            <select wire:model.live="issueStatus"
+                                    class="mt-1 w-full border rounded-lg px-2 py-1.5">
+                                <option value="open_any">Open (any)</option>
+                                <option value="closed_any">Closed (any)</option>
+                                <option value="all">All</option>
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="text-xs text-gray-600">Severity</span>
+                            <select wire:model.live="issueSeverity"
+                                    class="mt-1 w-full border rounded-lg px-2 py-1.5">
+                                <option value="">All</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </label>
+                    </div>
+                @endif
             </div>
         </div>
 
         {{-- Row 2: Stat (when applicable) + Reset --}}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 items-end">
-            @if($mode !== 'project')
+            @if($mode !== 'project' && $mode !== 'issue')
                 <label class="block max-w-[18rem]">
                     <span class="text-xs text-gray-600">Statistic</span>
                     <select wire:model.live="stat"
@@ -208,6 +225,52 @@
                 @endforelse
             </tbody>
         </table>
+        {{-- Issue details (title / owner / description) --}}
+@if($mode === 'issues')
+    <div class="bg-white border rounded-xl shadow-sm overflow-x-auto mt-6">
+        <div class="px-4 pt-4 pb-2 font-semibold text-gray-900">Issue details</div>
+        <table class="min-w-full text-sm table-auto">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-3 py-2 text-left">Council</th>
+                    <th class="px-3 py-2 text-left">Title</th>
+                    <th class="px-3 py-2 text-left">Owner</th>
+                    <th class="px-3 py-2 text-left">Severity</th>
+                    <th class="px-3 py-2 text-left">Status</th>
+                    <th class="px-3 py-2 text-left">Opened</th>
+                    <th class="px-3 py-2 text-left">Due</th>
+                    <th class="px-3 py-2 text-left">Closed</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($issueDetails as $it)
+                    <tr class="border-t align-top">
+                        <td class="px-3 py-2">{{ $it['council'] }}</td>
+                        <td class="px-3 py-2">
+                            <div class="font-medium text-gray-900">{{ $it['title'] }}</div>
+                            @if(!empty($it['description']))
+                                <div class="text-[11px] text-gray-500">{{ $it['description'] }}</div>
+                            @endif
+                        </td>
+                        <td class="px-3 py-2">{{ $it['owner'] ?: '—' }}</td>
+                        <td class="px-3 py-2 capitalize">{{ $it['severity'] ?: '—' }}</td>
+                        <td class="px-3 py-2 capitalize">{{ str_replace('_',' ', $it['status']) ?: '—' }}</td>
+                        <td class="px-3 py-2">{{ $it['opened'] ?: '—' }}</td>
+                        <td class="px-3 py-2">{{ $it['due'] ?: '—' }}</td>
+                        <td class="px-3 py-2">{{ $it['closed'] ?: '—' }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="8" class="px-3 py-6 text-center text-gray-500 italic">
+                            No issues match the filters.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+@endif
+
     </div>
 
     {{-- Footer --}}

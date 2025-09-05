@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Livewire;
 
 use Livewire\Component;
@@ -9,12 +8,13 @@ use App\Models\Indicator;
 use App\Models\MetricValue;
 use App\Models\FinanceEntry;
 use App\Models\Project;
-use App\Models\Sector; // table: sectors
+use App\Models\Sector;
+use App\Models\KeyIssue;                 // 👈 add
 
 class CompareCouncils extends Component
 {
     /** UI mode */
-    public string $mode = 'indicator'; // indicator | finance | project
+    public string $mode = 'indicator'; // indicator | finance | project | issue
 
     /** Common filters */
     public array $councilIds = [];
@@ -27,36 +27,35 @@ class CompareCouncils extends Component
 
     /** Finance mode */
     public string $financeCategory = 'revenue_own'; // revenue_own|grant_central|expenditure_sector
-    public ?string $financeSubCategory = null;      // sector (when expenditure_sector)
+    public ?string $financeSubCategory = null;
 
     /** Project mode */
     public string $projectAgg = 'count';            // count|sum_budget
 
-    /** Option lists (sent to blade) */
+    /** Issue mode */
+    public string $issueStatus = 'open_any';        // open_any|closed_any|all
+    public ?string $issueSeverity = null;           // null=All | low|medium|high|critical
+
+    /** Option lists */
     public array $allCouncils = [];
     public array $allIndicators = [];
-    public array $sectors = [];                     // ['HLTH','EDU',...]
+    public array $sectors = [];
 
     /** Labels */
     private array $financeLabels = [
-        'revenue_own'       => 'Own-source revenue',
-        'grant_central'     => 'Central grant',
-        'expenditure_sector'=> 'Expenditure (by sector)',
+        'revenue_own'        => 'Own-source revenue',
+        'grant_central'      => 'Central grant',
+        'expenditure_sector' => 'Expenditure (by sector)',
     ];
-    public array $tabs = [
-    'indicator' => 'Indicators',
-    'finance'   => 'Finance',
-    'project'   => 'Projects',
-];
 
     protected function rules(): array
     {
         return [
-            'mode'           => 'required|in:indicator,finance,project',
-            'councilIds'     => 'required|array|min:1',
-            'councilIds.*'   => 'integer|exists:location_councils,id',
-            'periodStart'    => 'required|date',
-            'periodEnd'      => 'required|date|after_or_equal:periodStart',
+            'mode'         => 'required|in:indicator,finance,project,issue',
+            'councilIds'   => 'required|array|min:1',
+            'councilIds.*' => 'integer|exists:location_councils,id',
+            'periodStart'  => 'required|date',
+            'periodEnd'    => 'required|date|after_or_equal:periodStart',
 
             // indicator
             'indicatorIds'   => 'exclude_unless:mode,indicator|array|min:1',
@@ -68,7 +67,11 @@ class CompareCouncils extends Component
             'financeSubCategory' => 'nullable|string',
 
             // project
-            'projectAgg'     => 'exclude_unless:mode,project|in:count,sum_budget',
+            'projectAgg' => 'exclude_unless:mode,project|in:count,sum_budget',
+
+            // issue
+            'issueStatus'   => 'exclude_unless:mode,issue|in:open_any,closed_any,all',
+            'issueSeverity' => 'nullable|in:low,medium,high,critical',
         ];
     }
 
@@ -108,18 +111,18 @@ class CompareCouncils extends Component
         $this->indicatorIds = array_slice(array_column($this->allIndicators, 'id'), 0, 5);
     }
 
-    /** Reset to defaults */
     public function resetFilters(): void
     {
         $this->mount();
         $this->mode = 'indicator';
         $this->stat = 'latest';
-        $this->financeCategory = 'revenue_own';
+        $this->financeCategory    = 'revenue_own';
         $this->financeSubCategory = null;
-        $this->projectAgg = 'count';
+        $this->projectAgg         = 'count';
+        $this->issueStatus        = 'open_any';
+        $this->issueSeverity      = null;
     }
 
-    /** When mode changes, clear mode-specific inputs (keeps common filters) */
     public function updatedMode(string $value): void
     {
         if ($value === 'indicator') {
@@ -133,15 +136,19 @@ class CompareCouncils extends Component
             $this->financeSubCategory = null;
         } elseif ($value === 'project') {
             $this->projectAgg = 'count';
+        } elseif ($value === 'issue') {
+            $this->issueStatus   = 'open_any';
+            $this->issueSeverity = null;
         }
     }
 
-    /** Computed heading for first column */
+    /** First-column heading */
     public function getLeadHeadingProperty(): string
     {
         return match ($this->mode) {
             'finance' => 'Finance',
             'project' => 'Project',
+            'issue'   => 'Issue',
             default   => 'Indicator',
         };
     }
@@ -177,6 +184,7 @@ class CompareCouncils extends Component
         return match ($this->mode) {
             'finance' => $this->buildFinanceRows($headers),
             'project' => $this->buildProjectRows($headers),
+            'issue'   => $this->buildIssueRows($headers),   // 👈 add
             default   => $this->buildIndicatorRows($headers),
         };
     }
@@ -220,7 +228,7 @@ class CompareCouncils extends Component
                     $val = match ($this->stat) {
                         'avg' => (float) $group->avg('value'),
                         'sum' => (float) $group->sum('value'),
-                        default => (float) optional($group->last())->value, // latest
+                        default => (float) optional($group->last())->value,
                     };
                 }
                 $values[$cid] = $val;
@@ -236,7 +244,6 @@ class CompareCouncils extends Component
         }
 
         return $rows;
-        // end indicator
     }
 
     /** ---------------- FINANCE ---------------- */
@@ -318,7 +325,6 @@ class CompareCouncils extends Component
             'values'    => $values,
             'max'       => (float) $max,
         ]];
-        // end finance
     }
 
     /** ---------------- PROJECTS ---------------- */
@@ -353,6 +359,123 @@ class CompareCouncils extends Component
             'values'    => $values,
             'max'       => (float) $max,
         ]];
-        // end projects
     }
+
+    /** ---------------- ISSUES ---------------- */
+  // In App\Livewire\CompareCouncils.php
+private function buildIssueRows(array $headers): array
+{
+    $from = $this->periodStart.' 00:00:00';
+    $to   = $this->periodEnd.' 23:59:59';
+
+    $base = \App\Models\KeyIssue::query() // <-- use your model class name
+        ->select(['council_id','status','severity','created_at','resolved_at'])
+        ->whereIn('council_id', array_column($headers, 'id'))
+        ->whereBetween('created_at', [$from, $to]);
+
+    if (!empty($this->issueSeverity)) {
+        $base->where('severity', $this->issueSeverity);
+    }
+
+    if (!empty($this->issueStatus)) {
+        // examples of friendly filters; tweak to your UI values if different
+        if ($this->issueStatus === 'open_any') {
+            $base->whereNotIn('status', ['resolved','closed']);
+        } elseif ($this->issueStatus === 'closed_any') {
+            $base->whereIn('status', ['resolved','closed']);
+        } else {
+            $base->where('status', $this->issueStatus);
+        }
+    }
+
+    $byCouncil = $base->get()->groupBy('council_id');
+
+    // Row 1: count by council
+    $valuesCount = [];
+    foreach ($headers as $h) {
+        $cid = $h['id'];
+        $valuesCount[$cid] = (int) (($byCouncil[$cid] ?? collect())->count());
+    }
+    $maxCount = collect($valuesCount)->max() ?? 0;
+
+    // Row 2: average days open (created_at -> resolved_at or now if not resolved)
+    $now = now();
+    $valuesAvgDays = [];
+    foreach ($headers as $h) {
+        $cid = $h['id'];
+        $issues = $byCouncil[$cid] ?? collect();
+        if ($issues->isEmpty()) {
+            $valuesAvgDays[$cid] = null;
+            continue;
+        }
+        $days = $issues->map(function ($i) use ($now) {
+            $end = $i->resolved_at ?? $now;                // both Carbon (see model casts)
+            return max(0, $i->created_at->diffInDays($end));
+        });
+        $valuesAvgDays[$cid] = round($days->avg(), 2);
+    }
+    $maxDays = collect($valuesAvgDays)->filter(fn($v)=>$v!==null)->max() ?? 0;
+
+    return [
+        [
+            'indicator' => 'Issues (count)',
+            'unit'      => 'count',
+            'values'    => $valuesCount,
+            'max'       => (float) $maxCount,
+        ],
+        [
+            'indicator' => 'Avg days open',
+            'unit'      => 'days',
+            'values'    => $valuesAvgDays,
+            'max'       => (float) $maxDays,
+        ],
+    ];
+}
+  /** Detailed list for Issues (title / owner / description + dates) */
+    private function buildIssueDetails(array $headers): array
+    {
+        $from = $this->periodStart.' 00:00:00';
+        $to   = $this->periodEnd.' 23:59:59';
+
+        $q = KeyIssue::query()
+            ->select([
+                'id','council_id','title','owner','description',
+                'severity','status','created_at','due_at','resolved_at'
+            ])
+            ->whereIn('council_id', array_column($headers, 'id'))
+            ->whereBetween('created_at', [$from, $to])
+            ->orderBy('created_at', 'desc');
+
+        if ($this->issueSeverity !== '') {
+            $q->where('severity', $this->issueSeverity);
+        }
+        if ($this->issueStatus !== '') {
+            if ($this->issueStatus === 'open_any') {
+                $q->whereNotIn('status', ['resolved','closed']);
+            } elseif ($this->issueStatus === 'closed_any') {
+                $q->whereIn('status', ['resolved','closed']);
+            } else {
+                $q->where('status', $this->issueStatus);
+            }
+        }
+
+        $byCouncil = collect($this->allCouncils)->keyBy('id');
+
+        return $q->get()->map(function ($r) use ($byCouncil) {
+            return [
+                'id'          => $r->id,
+                'council_id'  => $r->council_id,
+                'council'     => $byCouncil[$r->council_id]['name'] ?? ('#'.$r->council_id),
+                'title'       => (string) $r->title,
+                'owner'       => (string) ($r->owner ?? ''),
+                'description' => Str::limit((string) ($r->description ?? ''), 160),
+                'severity'    => (string) ($r->severity ?? ''),
+                'status'      => (string) ($r->status ?? ''),
+                'opened'      => optional($r->created_at)->toDateString(),
+                'due'         => optional($r->due_at)->toDateString(),
+                'closed'      => optional($r->resolved_at)->toDateString(),
+            ];
+        })->all();
+    }
+
 }

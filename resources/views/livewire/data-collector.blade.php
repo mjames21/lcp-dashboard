@@ -126,6 +126,8 @@
                     <button type="button" wire:click="$set('activeTab','finance')"   class="px-3 py-1.5 rounded {{ $activeTab==='finance' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700' }}">Finance</button>
                     <button type="button" wire:click="$set('activeTab','indicator')" class="px-3 py-1.5 rounded {{ $activeTab==='indicator' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700' }}">Indicator</button>
                     <button type="button" wire:click="$set('activeTab','project')"   class="px-3 py-1.5 rounded {{ $activeTab==='project' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700' }}">Project</button>
+                    <button type="button" wire:click="$set('activeTab','issue')"class="px-3 py-1.5 rounded {{ $activeTab==='issue' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700' }}">Issue</button>
+
                 </div>
             </div>
 
@@ -263,6 +265,59 @@
                 </div>
             </div>
             @endif
+            {{-- Issue form --}}
+@if ($activeTab==='issue')
+<div class="px-6 pb-2">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <label class="block">
+            <span class="text-xs text-gray-600">Title</span>
+            <input wire:model.defer="issueTitle" class="w-full border px-2 py-1.5 rounded" placeholder="Short issue title" />
+            @error('issueTitle')<div class="text-xs text-red-600 mt-1">{{ $message }}</div>@enderror
+        </label>
+
+        <label class="block">
+            <span class="text-xs text-gray-600">Owner</span>
+            <input wire:model.defer="issueOwner" class="w-full border px-2 py-1.5 rounded" placeholder="e.g., MoF (FDD)" />
+        </label>
+
+        <label class="block">
+            <span class="text-xs text-gray-600">Priority</span>
+            <select wire:model.defer="issuePriority" class="w-full border px-2 py-1.5 rounded">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
+        </label>
+
+        <label class="block">
+            <span class="text-xs text-gray-600">Status</span>
+            <select wire:model.defer="issueStatus" class="w-full border px-2 py-1.5 rounded">
+                <option value="open">Open</option>
+                <option value="in_progress">In progress</option>
+                <option value="blocked">Blocked</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+            </select>
+        </label>
+
+        <label class="block">
+            <span class="text-xs text-gray-600">Due date (optional)</span>
+            <input type="date" wire:model.defer="issueDueAt" class="w-full border px-2 py-1.5 rounded" />
+        </label>
+
+        <label class="block md:col-span-2">
+            <span class="text-xs text-gray-600">Notes</span>
+            <textarea wire:model.defer="issueNotes" rows="3" class="w-full border px-2 py-1.5 rounded"
+                      placeholder="Optional details..."></textarea>
+        </label>
+    </div>
+
+    <div class="flex justify-end gap-2 mt-4 border-t pt-4">
+        <button type="button" wire:click="close" class="bg-white border hover:bg-gray-50 text-gray-800 font-semibold px-4 py-1.5 text-sm rounded">Cancel</button>
+        <button type="button" wire:click="saveIssue" class="bg-gray-800 hover:bg-gray-900 text-white font-semibold px-4 py-1.5 text-sm rounded">Save Issue</button>
+    </div>
+</div>
+@endif
 
             <div class="h-3"></div>
         </div>

@@ -12,6 +12,8 @@ use App\Models\MetricValue;
 use App\Models\Project;
 use App\Models\Sector;
 use App\Models\GovernanceEvent;
+use App\Models\KeyIssue;
+
 
 class DataCollector extends Component
 {
@@ -40,6 +42,14 @@ class DataCollector extends Component
     public ?string $governanceDate = null;
     public ?string $governanceLocation = null;
     public ?string $governanceNotes = null;
+
+        // --- Key Issue form ---
+    public string  $issueTitle   = '';
+    public ?string $issueOwner   = null;
+    public string  $issuePriority = 'medium'; // low|medium|high
+    public string  $issueStatus   = 'open';   // open|in_progress|blocked|resolved|closed
+    public ?string $issueDueAt    = null;     // Y-m-d
+    public ?string $issueNotes    = null;     // description/notes
 
     /** Lookups */
     public array $sectors = []; // only sector codes
@@ -107,6 +117,14 @@ class DataCollector extends Component
             'projectTitle'    => 'nullable|string|max:255',
             'projectStatus'   => 'nullable|in:planned,ongoing,completed,stalled',
             'projectBudget'   => 'nullable|numeric|min:0',
+
+            'issueTitle'    => 'nullable|string|max:255',
+            'issueOwner'    => 'nullable|string|max:255',
+            'issuePriority' => 'nullable|in:low,medium,high',
+            'issueStatus'   => 'nullable|in:open,in_progress,blocked,resolved,closed',
+            'issueDueAt'    => 'nullable|date',
+            'issueNotes'    => 'nullable|string',
+
         ];
     }
 
@@ -359,5 +377,43 @@ private function recent(): array
         return [];
     }
 }
+
+public function saveIssue(): void
+{
+    // Require council + period like other saves
+    $this->validate([
+        'councilId'     => 'required|exists:location_councils,id',
+        'issueTitle'    => 'required|string|max:255',
+        'issuePriority' => 'required|in:low,medium,high',
+        'issueStatus'   => 'required|in:open,in_progress,blocked,resolved,closed',
+        'issueDueAt'    => 'nullable|date',
+        'issueOwner'    => 'nullable|string|max:255',
+        'issueNotes'    => 'nullable|string',
+    ]);
+
+    \App\Models\KeyIssue::create([
+        'council_id' => $this->councilId,
+        'title'      => $this->issueTitle,
+        'description'=> $this->issueNotes,
+        'owner'      => $this->issueOwner,
+        'priority'   => $this->issuePriority,
+        'status'     => $this->issueStatus,
+        'opened_at'  => now(),
+        'due_at'     => $this->issueDueAt ? ($this->issueDueAt.' 00:00:00') : null,
+        'source'     => 'DataCollector',
+    ]);
+
+    // reset form fields
+    $this->issueTitle = '';
+    $this->issueOwner = null;
+    $this->issuePriority = 'medium';
+    $this->issueStatus = 'open';
+    $this->issueDueAt = null;
+    $this->issueNotes = null;
+
+    session()->flash('message', 'Key issue logged.');
+    $this->close();
+}
+
 
 }
