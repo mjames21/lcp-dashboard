@@ -21,7 +21,7 @@ return new class extends Migration
                     ->nullOnDelete()
                     ->index();
                     */
-                    $table->text('severity')->nullable();
+                    //$table->text('severity')->nullable();
                    // $table->text('status')->nullable();
                     $table->date('resolved_at')->nullable();
             
