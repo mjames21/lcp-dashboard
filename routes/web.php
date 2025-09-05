@@ -5,6 +5,7 @@ use App\Livewire\DataCollector;
 use App\Livewire\CompareCouncils;
 use App\Livewire\SectorDashboard;
 use App\Livewire\CouncilDetail;
+use App\Livewire\LCPDashboard;
 use App\Livewire\MapView;
 
 Route::get('/', function () {
@@ -16,9 +17,7 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', LCPDashboard::class)->name('dashboard');
     Route::get('/collect', DataCollector::class)->name('data.collect');
     Route::get('/compare', CompareCouncils::class)->name('compare.councils');
     Route::get('/sector/{code}', SectorDashboard::class)->name('sector.dashboard');
