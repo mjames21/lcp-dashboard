@@ -225,8 +225,10 @@
                 @endforelse
             </tbody>
         </table>
-        {{-- Issue details (title / owner / description) --}}
-@if($mode === 'issues')
+        
+    </div>
+    {{-- Issue details (title / owner / description) --}}
+@if($mode === 'issue')
     <div class="bg-white border rounded-xl shadow-sm overflow-x-auto mt-6">
         <div class="px-4 pt-4 pb-2 font-semibold text-gray-900">Issue details</div>
         <table class="min-w-full text-sm table-auto">
@@ -271,7 +273,6 @@
     </div>
 @endif
 
-    </div>
 
     {{-- Footer --}}
     <div class="mt-2 text-[11px] text-gray-500">

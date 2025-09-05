@@ -153,21 +153,7 @@ class CompareCouncils extends Component
         };
     }
 
-    public function render()
-    {
-        $headers = $this->headers();
-        $rows    = $this->buildRows($headers);
-
-        return view('livewire.compare-councils', [
-            'councils'    => $this->allCouncils,
-            'indicators'  => $this->allIndicators,
-            'headers'     => $headers,
-            'rows'        => $rows,
-            'periodStart' => $this->periodStart,
-            'periodEnd'   => $this->periodEnd,
-            'sectors'     => $this->sectors,
-        ])->layout('layouts.app');
-    }
+  
 
     private function headers(): array
     {
@@ -476,6 +462,51 @@ private function buildIssueRows(array $headers): array
                 'closed'      => optional($r->resolved_at)->toDateString(),
             ];
         })->all();
+    }
+
+
+
+      public function render()
+    {
+        $headers = $this->headers();
+        $rows    = $this->buildRows($headers);
+         $issueDetails = [];
+if ($this->mode === 'issue') {
+    $from = $this->periodStart . ' 00:00:00';
+    $to   = $this->periodEnd   . ' 23:59:59';
+
+    $issueDetails = \App\Models\KeyIssue::query()
+        ->with('council:id,councilname')
+        ->whereIn('council_id', array_column($headers ?? $this->headers(), 'id'))
+        ->when($this->issueSeverity, fn($q) => $q->where('severity', $this->issueSeverity))
+        ->when($this->issueStatus === 'open_any',    fn($q) => $q->whereNotIn('status', ['resolved','closed']))
+        ->when($this->issueStatus === 'closed_any',  fn($q) => $q->whereIn('status', ['resolved','closed']))
+        ->whereBetween('created_at', [$from,$to])
+        ->orderByDesc('created_at')
+        ->get()
+        ->map(fn($r) => [
+            'council'     => optional($r->council)->councilname ?? '—',
+            'title'       => (string) $r->title,
+            'owner'       => (string) ($r->owner ?? ''),
+            'description' => (string) ($r->description ?? ''),
+            'severity'    => (string) ($r->severity ?? ''),
+            'status'      => (string) ($r->status ?? ''),
+            'opened'      => optional($r->created_at)->toDateString(),
+            'due'         => optional($r->due_at ?? null)->toDateString(),
+            'closed'      => optional($r->resolved_at ?? $r->closed_at ?? null)->toDateString(),
+        ])
+        ->toArray();
+}
+        return view('livewire.compare-councils', [
+            'councils'    => $this->allCouncils,
+            'indicators'  => $this->allIndicators,
+            'headers'     => $headers,
+            'rows'        => $rows,
+            'periodStart' => $this->periodStart,
+            'periodEnd'   => $this->periodEnd,
+            'sectors'     => $this->sectors,
+             'issueDetails' => $issueDetails,
+        ])->layout('layouts.app');
     }
 
 }
