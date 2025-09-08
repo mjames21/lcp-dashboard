@@ -59,10 +59,9 @@
                 'label' => 'Exports',
                 'icon'  => 'fa-file-export',
                 'children' => [
-                    [ 'type' => 'link', 'label' => 'Finance CSV',    'route' => 'export.finance',    'active' => [] ],
-                    [ 'type' => 'link', 'label' => 'Indicator CSV',  'route' => 'export.indicators', 'active' => [] ],
-                    [ 'type' => 'link', 'label' => 'Projects CSV',   'route' => 'export.projects',   'active' => [] ],
-                    [ 'type' => 'link', 'label' => 'Issues CSV',     'route' => 'export.issues',     'active' => [] ],
+                     [ 'type' => 'route', 'label' => 'Exports',          'route' => 'exports.index' ],
+  [ 'type' => 'url',   'label' => 'Finance CSV',      'url'   => route('exports.finance') ],
+  [ 'type' => 'url',   'label' => 'Indicators CSV',   'url'   => route('exports.indicators') ],
                 ],
              ],
         ],

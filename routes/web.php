@@ -26,14 +26,16 @@ Route::middleware([
     Route::get('/councils/{council}', CouncilDetail::class)->name('councils.detail');
     Route::get('/map', MapView::class)->name('map.view');
 
-    // Exports (CSV + XLSX)
-    Route::get('/exports/finance.csv',    [ExportController::class, 'finance'])->name('export.finance');
-    Route::get('/exports/indicators.csv', [ExportController::class, 'indicators'])->name('export.indicators');
-    Route::get('/exports/projects.csv',   [ExportController::class, 'projects'])->name('export.projects');
-    Route::get('/exports/issues.csv',     [ExportController::class, 'issues'])->name('export.issues');
-    // Queue exports (JSON response with URL; requires queue worker)
-    Route::post('/exports/finance.queue', [ExportController::class, 'queueFinanceXlsx'])->name('exports.finance.queue');
-    Route::post('/exports/indicator.queue', [ExportController::class, 'queueIndicatorXlsx'])->name('exports.indicator.queue');
+   Route::prefix('exports')->group(function () {
+    // Optional landing page with buttons/filters
+    Route::get('/', [ExportController::class, 'index'])->name('exports.index');
+
+    // CSV endpoints (GET): pass ?from=YYYY-MM-DD&to=YYYY-MM-DD etc.
+    Route::get('/finance.csv',    [ExportController::class, 'financeCsv'])->name('exports.finance');
+    Route::get('/indicators.csv', [ExportController::class, 'indicatorsCsv'])->name('exports.indicators');
+    Route::get('/projects.csv',   [ExportController::class, 'projectsCsv'])->name('exports.projects');
+    Route::get('/issues.csv',     [ExportController::class, 'issuesCsv'])->name('exports.issues');
+});
     // GeoJSON FeatureCollection for councils (used by Leaflet map)
     Route::get('/geo/councils', [CouncilGeoController::class, 'featureCollection'])->name('geo.councils');
 });
