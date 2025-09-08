@@ -34,7 +34,7 @@
         <div class="max-w-7xl mx-auto px-6">
             <div class="h-16 flex items-center justify-between">
                 <a href="{{ url('/') }}" class="flex items-center gap-2">
-                    <img src="{{ asset('img/switch-logo.jpg') }}" alt="Logo" class="h-8 w-8 rounded object-cover">
+                    <img src="{{ asset('images/logo.png') }}" alt="Logo" class="h-8 w-8 rounded object-cover">
                     <span class="font-semibold text-gray-900">LCPD</span>
                 </a>
 
