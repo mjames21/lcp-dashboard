@@ -17,7 +17,7 @@ class ExportController extends Controller
         return view('exports.index', [
             'from' => $request->input('from', now()->startOfMonth()->toDateString()),
             'to'   => $request->input('to',   now()->endOfMonth()->toDateString()),
-        ]);
+        ])->layout('layouts.app');
     }
 
     // ---------------------- FINANCE ----------------------
