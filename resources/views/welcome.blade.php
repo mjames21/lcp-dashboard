@@ -177,7 +177,7 @@
                         </svg>
                     </div>
                     <div class="font-semibold text-gray-900">Data Collection</div>
-                    <p class="mt-1 text-sm text-gray-600">Livewire forms for finance, indicators, projects, and governance.</p>
+                    <p class="mt-1 text-sm text-gray-600">Streamlined forms for finance, indicators, projects, and governance.</p>
                 </div>
 
                 <div class="bg-white border rounded-xl p-5">
