@@ -55,14 +55,16 @@
                 'active' => ['data.collect'],
             ],
             [
-                'type'  => 'group',
+                'type' => 'group',
                 'label' => 'Exports',
                 'icon'  => 'fa-file-export',
                 'children' => [
-                    [ 'type' => 'url', 'label' => 'Finance XLSX',   'url' => '', 'external' => true ],
-                    [ 'type' => 'url', 'label' => 'Indicator XLSX', 'url' => '', 'external' => true ],
+                    [ 'type' => 'link', 'label' => 'Finance CSV',    'route' => 'export.finance',    'active' => [] ],
+                    [ 'type' => 'link', 'label' => 'Indicator CSV',  'route' => 'export.indicators', 'active' => [] ],
+                    [ 'type' => 'link', 'label' => 'Projects CSV',   'route' => 'export.projects',   'active' => [] ],
+                    [ 'type' => 'link', 'label' => 'Issues CSV',     'route' => 'export.issues',     'active' => [] ],
                 ],
-            ],
+             ],
         ],
     ];
 

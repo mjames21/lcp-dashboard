@@ -7,6 +7,8 @@ use App\Livewire\SectorDashboard;
 use App\Livewire\CouncilDetail;
 use App\Livewire\LCPDashboard;
 use App\Livewire\MapView;
+use App\Http\Controllers\ExportController;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -25,10 +27,10 @@ Route::middleware([
     Route::get('/map', MapView::class)->name('map.view');
 
     // Exports (CSV + XLSX)
-    Route::get('/exports/finance.csv', [ExportController::class, 'financeCsv'])->name('exports.finance.csv');
-    Route::get('/exports/indicator.csv', [ExportController::class, 'indicatorCsv'])->name('exports.indicator.csv');
-    Route::get('/exports/finance.xlsx', [ExportController::class, 'financeXlsx'])->name('exports.finance.xlsx');
-    Route::get('/exports/indicator.xlsx',[ExportController::class, 'indicatorXlsx'])->name('exports.indicator.xlsx');
+    Route::get('/exports/finance.csv',    [ExportController::class, 'finance'])->name('export.finance');
+    Route::get('/exports/indicators.csv', [ExportController::class, 'indicators'])->name('export.indicators');
+    Route::get('/exports/projects.csv',   [ExportController::class, 'projects'])->name('export.projects');
+    Route::get('/exports/issues.csv',     [ExportController::class, 'issues'])->name('export.issues');
     // Queue exports (JSON response with URL; requires queue worker)
     Route::post('/exports/finance.queue', [ExportController::class, 'queueFinanceXlsx'])->name('exports.finance.queue');
     Route::post('/exports/indicator.queue', [ExportController::class, 'queueIndicatorXlsx'])->name('exports.indicator.queue');

@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Local Council Performance Dashboard</title>
+    <title>Local Council Performance Dashboard — Decentralization Secretariat (Sierra Leone)</title>
 
     {{-- Tailwind CSS via CDN --}}
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,6 +14,9 @@
         theme: {
           extend: {
             fontFamily: { sans: ['Figtree', 'ui-sans-serif', 'system-ui'] },
+            colors: {
+              brand: { 900: '#1f2937', 800: '#374151' } // gray-900/800 alias for consistency
+            }
           }
         }
       }
@@ -34,8 +37,8 @@
         <div class="max-w-7xl mx-auto px-6">
             <div class="h-16 flex items-center justify-between">
                 <a href="{{ url('/') }}" class="flex items-center gap-2">
-                    <img src="{{ asset('images/logo.png') }}" alt="Logo" class="h-8 w-8 rounded object-cover">
-                    <span class="font-semibold text-gray-900">LCPD</span>
+                    <img src="{{ asset('images/logo.png') }}" alt="Decentralization Secretariat Logo" class="h-8 w-8 rounded object-cover">
+                    <span class="font-semibold text-gray-900">LCPD • Decentralization Secretariat</span>
                 </a>
 
                 <nav class="hidden md:flex items-center gap-6 text-sm">
@@ -76,10 +79,16 @@
         <div class="max-w-7xl mx-auto px-6">
             <div class="py-16 md:py-24 grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
                 <div>
-                    <span class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full bg-white border text-gray-700">
-                        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                        Live data collection
-                    </span>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full bg-white border text-gray-700">
+                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                            Live data collection
+                        </span>
+                        {{-- Ownership badge --}}
+                        <span class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-900 text-white">
+                            Owned by the Decentralization Secretariat, Government of Sierra Leone
+                        </span>
+                    </div>
 
                     <h1 class="mt-4 text-3xl md:text-5xl font-bold leading-tight text-gray-900">
                         Local Council Performance, <span class="text-gray-700">made visible.</span>
@@ -128,25 +137,76 @@
                 </div>
 
                 {{-- Preview card --}}
-                <div class="relative">
-                    <div class="bg-white border rounded-2xl shadow-sm overflow-hidden">
-                        <div class="border-b px-4 py-2 text-xs text-gray-500">Preview</div>
-                        <div class="p-4">
-                            <div class="h-56 md:h-72 w-full rounded-lg border bg-gradient-to-br from-gray-50 to-white flex items-center justify-center">
-                                <div class="text-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-10 w-10" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M3 3h18v2H3V3Zm0 6h18v2H3V9Zm0 6h18v2H3v-2Zm0 6h18v2H3v-2Z" opacity=".1"/>
-                                        <path d="M7 12h3v7H7v-7Zm4-5h3v12h-3V7Zm4 8h3v4h-3v-4Z"/>
-                                    </svg>
-                                    <div class="mt-3 text-sm text-gray-600">Analytics & comparisons</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="px-4 py-3 text-xs text-gray-500">
-                            Screenshots are illustrative. Log in to explore live data.
-                        </div>
-                    </div>
-                </div>
+       <div class="h-56 md:h-72 w-full rounded-lg border bg-white p-4 flex flex-col">
+  <!-- Header -->
+  <div class="flex items-start justify-between gap-3">
+    <div class="text-xs text-gray-500">
+      <div class="font-semibold text-gray-900">Service coverage — Water</div>
+      <div>Last 10 months</div>
+    </div>
+    <div class="shrink-0">
+      <span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs bg-gray-900 text-white">
+        82.4% <span class="rounded bg-white/15 px-1.5 py-0.5">+1.8 pp</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Quick badges -->
+  <div class="mt-2 flex flex-wrap gap-2 text-[11px] text-gray-600">
+    <span class="px-2 py-0.5 rounded border">Avg: 78%</span>
+    <span class="px-2 py-0.5 rounded border">Best: 85%</span>
+    <span class="px-2 py-0.5 rounded border">Target: 80%</span>
+  </div>
+
+  <!-- Chart -->
+  <svg viewBox="0 0 320 140" class="mt-3 w-full h-full">
+    <defs>
+      <!-- area gradient -->
+      <linearGradient id="areaFill" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="#1f2937" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="#1f2937" stop-opacity="0.05"/>
+      </linearGradient>
+      <!-- glow for current dot -->
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="3" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/></feMerge>
+      </filter>
+    </defs>
+
+    <!-- subtle grid -->
+    <g stroke="#e5e7eb" stroke-width="1">
+      <line x1="0" y1="30"  x2="320" y2="30"/>
+      <line x1="0" y1="60"  x2="320" y2="60"/>
+      <line x1="0" y1="90"  x2="320" y2="90"/>
+      <line x1="0" y1="120" x2="320" y2="120"/>
+    </g>
+
+    <!-- baseline (target 80%) -->
+    <line x1="0" y1="60" x2="320" y2="60" stroke="#d1d5db" stroke-width="2" stroke-dasharray="4 4"/>
+
+    <!-- area under line (values: 68,72,74,77,79,81,82,83,84,85 => y=140-v) -->
+    <path d="M10,72 L42,68 L74,66 L106,63 L138,61 L170,59 L202,58 L234,57 L266,56 L298,55 L298,140 L10,140 Z"
+          fill="url(#areaFill)"/>
+
+    <!-- line -->
+    <polyline fill="none" stroke="#1f2937" stroke-width="2.25"
+              points="10,72 42,68 74,66 106,63 138,61 170,59 202,58 234,57 266,56 298,55"/>
+
+    <!-- current point + glow -->
+    <circle cx="298" cy="55" r="4.5" fill="#1f2937" filter="url(#glow)"/>
+    <circle cx="298" cy="55" r="2" fill="white" stroke="#1f2937" stroke-width="1.5"/>
+
+    <!-- x ticks -->
+    <g fill="#6b7280" font-size="10">
+      <text x="8"   y="135">−9</text>
+      <text x="72"  y="135">−6</text>
+      <text x="138" y="135">−3</text>
+      <text x="286" y="135">Now</text>
+    </g>
+  </svg>
+</div>
+
+
             </div>
         </div>
     </section>
@@ -263,10 +323,10 @@
     <footer id="contact" class="border-t bg-white">
         <div class="max-w-7xl mx-auto px-6 py-8 text-sm text-gray-500">
             <div class="flex flex-col md:flex-row items-center justify-between gap-3">
-                <div>© {{ date('Y') }} SPS – CAS. All rights reserved.</div>
+                <div>© {{ date('Y') }} Decentralization Secretariat, Government of Sierra Leone. All rights reserved.</div>
                 <div class="flex items-center gap-4">
                     <a href="/privacy-policy" class="hover:text-gray-700">Privacy Policy</a>
-                    <a href="mailto:info@example.com" class="hover:text-gray-700">Contact</a>
+                    <a href="mailto:info@decsec.gov.sl" class="hover:text-gray-700">Contact</a>
                 </div>
             </div>
         </div>
