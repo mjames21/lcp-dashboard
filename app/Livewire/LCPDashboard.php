@@ -5,159 +5,160 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Models\LocationCouncils;
 use App\Models\Indicator;
-use App\Models\FinanceEntry;
-use App\Models\MetricValue;
 use App\Models\Project;
+use App\Models\FinanceEntry;
 use App\Models\KeyIssue;
-use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 
 class LCPDashboard extends Component
 {
     public string $periodStart;
     public string $periodEnd;
 
+    // UI (optional): how many rows to show in tables
+    public int $issuesLimit = 8;
+
     public function mount(): void
     {
+        // Default to current month
         $this->periodStart = now()->startOfMonth()->toDateString();
         $this->periodEnd   = now()->endOfMonth()->toDateString();
     }
 
+    /** Quick period setter from the UI */
     public function quickRange(string $key): void
     {
         $now = now();
-        [$from, $to] = match ($key) {
-            'this_month' => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()],
-            'last_3mo'   => [$now->copy()->subMonths(2)->startOfMonth(), $now->copy()->endOfMonth()],
-            'ytd'        => [$now->copy()->startOfYear(), $now->copy()->endOfYear()],
-            default      => [$this->periodStart, $this->periodEnd],
-        };
 
-        $this->periodStart = $from instanceof \Carbon\Carbon ? $from->toDateString() : (string) $from;
-        $this->periodEnd   = $to   instanceof \Carbon\Carbon ? $to->toDateString()   : (string) $to;
+        switch ($key) {
+            case 'this_month':
+                $this->periodStart = $now->startOfMonth()->toDateString();
+                $this->periodEnd   = $now->endOfMonth()->toDateString();
+                break;
+
+            case 'last_3mo':
+                $this->periodStart = $now->copy()->subMonths(2)->startOfMonth()->toDateString();
+                $this->periodEnd   = $now->endOfMonth()->toDateString();
+                break;
+
+            case 'ytd':
+                $this->periodStart = $now->startOfYear()->toDateString();
+                $this->periodEnd   = $now->endOfYear()->toDateString();
+                break;
+        }
     }
 
-    public function render()
+    /** Helper: add “period overlap” constraint */
+    private function wherePeriodOverlap($query, string $from, string $to)
+    {
+        return $query->where(function ($q) use ($from, $to) {
+            $q->whereBetween('period_start', [$from, $to])
+              ->orWhereBetween('period_end',   [$from, $to])
+              ->orWhere(function ($qq) use ($from, $to) {
+                  $qq->where('period_start', '<=', $from)
+                     ->where('period_end',   '>=', $to);
+              });
+        });
+    }
+
+    /** KPIs */
+    private function kpis(): array
+    {
+        $councilsCount   = LocationCouncils::count();
+        $indicatorsCount = Indicator::count();
+        $projectsCount   = Project::count();
+
+        // Open issues = anything not resolved or closed
+        $openIssuesCount = KeyIssue::query()
+            ->whereNotIn('status', ['resolved', 'closed'])
+            ->count();
+
+        return compact('councilsCount', 'indicatorsCount', 'projectsCount', 'openIssuesCount');
+    }
+
+    /** Finance rollups */
+    private function finance(): array
     {
         $from = $this->periodStart;
         $to   = $this->periodEnd;
 
-        // Top KPIs
-        $kpis = [
-            'councils'   => LocationCouncils::count(),
-            'indicators' => Indicator::count(),
-            'projects'   => Project::count(),
-            'issuesOpen' => KeyIssue::whereNotIn('status', ['resolved','closed'])->count(),
-        ];
+        $sumRevenueOwn = (float) $this->wherePeriodOverlap(
+            FinanceEntry::query()->where('category', 'revenue_own'),
+            $from, $to
+        )->sum('amount');
 
-        // Finance snapshots (period overlap aware)
-        $finance = [
-            'own_revenue' => $this->sumFinance('revenue_own', null, $from, $to),
-            'grants'      => $this->sumFinance('grant_central', null, $from, $to),
-            'expend'      => $this->sumFinance('expenditure_sector', null, $from, $to),
-        ];
+        $sumGrantCentral = (float) $this->wherePeriodOverlap(
+            FinanceEntry::query()->where('category', 'grant_central'),
+            $from, $to
+        )->sum('amount');
 
-        // Open issues (details)
-        $issues = KeyIssue::query()
-            ->select('id','title','owner','status','severity','council_id','opened_at','due_at','created_at')
-            ->with(['council:id,councilname'])
-            ->orderByDesc('created_at')
-            ->limit(8)
+        $sumExpenditureAll = (float) $this->wherePeriodOverlap(
+            FinanceEntry::query()->where('category', 'expenditure_sector'),
+            $from, $to
+        )->sum('amount');
+
+        return compact('sumRevenueOwn', 'sumGrantCentral', 'sumExpenditureAll');
+    }
+
+    /** Open issues list (top N) */
+    private function issues(): Collection
+    {
+        $from = $this->periodStart . ' 00:00:00';
+        $to   = $this->periodEnd   . ' 23:59:59';
+
+        // Map council ids to names
+        $cMap = LocationCouncils::select('id', 'councilname')
             ->get()
-            ->map(fn($i) => [
-                'id'       => (int) $i->id,
-                'title'    => (string) $i->title,
-                'owner'    => (string) ($i->owner ?? ''),
-                'status'   => (string) ($i->status ?? ''),
-                'severity' => (string) ($i->severity ?? ''),
-                'council'  => optional($i->council)->councilname ?? optional($i->council)->name ?? '—',
-                'opened'   => optional($i->opened_at)->toDateString() ?? optional($i->created_at)->toDateString(),
-                'due'      => optional($i->due_at)->toDateString(),
-            ]);
+            ->keyBy('id')
+            ->map(fn ($c) => $c->councilname ?? ('#'.$c->id));
 
-        // Recent activity (last 15 across modules)
-        $recent = $this->recent($from, $to);
-
-        return view('livewire.l-c-p-dashboard', compact('kpis','finance','issues','recent'))
-            ->layout('layouts.app');
-    }
-
-    private function sumFinance(string $category, ?string $sub, string $from, string $to): float
-    {
-        $q = FinanceEntry::query()
-            ->where('category', $category)
-            ->when($sub, fn($qq) => $qq->where('sub_category', $sub))
-            ->where(function ($w) use ($from, $to) {
-                $w->whereBetween('period_start', [$from, $to])
-                  ->orWhereBetween('period_end', [$from, $to])
-                  ->orWhere(function ($x) use ($from, $to) {
-                      $x->where('period_start', '<=', $from)->where('period_end', '>=', $to);
-                  });
+        return KeyIssue::query()
+            ->select([
+                'id','council_id','title','owner','severity','status',
+                'opened_at','due_at','closed_at','created_at','description'
+            ])
+            ->whereNotIn('status', ['resolved', 'closed'])
+            ->whereBetween('created_at', [$from, $to])
+            ->orderBy('severity', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->limit($this->issuesLimit)
+            ->get()
+            ->map(function ($i) use ($cMap) {
+                return [
+                    'id'          => (int) $i->id,
+                    'council'     => $cMap[$i->council_id] ?? '—',
+                    'title'       => (string) $i->title,
+                    'owner'       => (string) ($i->owner ?? ''),
+                    'severity'    => (string) ($i->severity ?? ''),
+                    'status'      => (string) ($i->status ?? ''),
+                    'opened'      => optional($i->opened_at)->toDateString(),
+                    'due'         => optional($i->due_at)->toDateString(),
+                    'closed'      => optional($i->closed_at)->toDateString(),
+                    'description' => (string) ($i->description ?? ''),
+                ];
             });
-
-        return (float) $q->sum('amount');
     }
 
-    private function recent(string $from, string $to): array
+    public function render()
     {
-        try {
-            $finance = FinanceEntry::with('council:id,councilname')
-                ->orderByDesc('created_at')->limit(10)->get()->map(function ($f) {
-                    return [
-                        'created_at' => $f->created_at,
-                        'type'       => 'Finance',
-                        'council'    => optional($f->council)->councilname ?? optional($f->council)->name ?? '—',
-                        'details'    => trim(($f->category ?? '-') . ($f->sub_category ? ' · '.$f->sub_category : '')),
-                        'when'       => ($f->period_start ? $f->period_start.' – ' : '').($f->period_end ?? ''),
-                        'amount'     => $f->amount !== null ? number_format((float) $f->amount, 2) : '—',
-                    ];
-                });
+        $kpis    = $this->kpis();
+        $finance = $this->finance();
+        $issues  = $this->issues();
 
-            $metrics = MetricValue::with(['council:id,councilname','indicator:id,name,unit'])
-                ->orderByDesc('created_at')->limit(10)->get()->map(function ($m) {
-                    return [
-                        'created_at' => $m->created_at,
-                        'type'       => 'Indicator',
-                        'council'    => optional($m->council)->councilname ?? optional($m->council)->name ?? '—',
-                        'details'    => optional($m->indicator)->name ? ($m->indicator->name.($m->indicator->unit ? ' ('.$m->indicator->unit.')' : '')) : '—',
-                        'when'       => ($m->period_start ? $m->period_start.' – ' : '').($m->period_end ?? ''),
-                        'amount'     => $m->value !== null ? (string) $m->value : '—',
-                    ];
-                });
-
-            $projects = Project::with('council:id,councilname')
-                ->orderByDesc('created_at')->limit(10)->get()->map(function ($p) {
-                    return [
-                        'created_at' => $p->created_at,
-                        'type'       => 'Project',
-                        'council'    => optional($p->council)->councilname ?? optional($p->council)->name ?? '—',
-                        'details'    => trim(($p->title ?? '-') . ($p->status ? ' · '.ucfirst((string) $p->status) : '')),
-                        'when'       => optional($p->created_at)->toDateString(),
-                        'amount'     => $p->budget !== null ? number_format((float) $p->budget, 2) : '—',
-                    ];
-                });
-
-            $issues = KeyIssue::with('council:id,councilname')
-                ->orderByDesc('created_at')->limit(10)->get()->map(function ($i) {
-                    return [
-                        'created_at' => $i->created_at,
-                        'type'       => 'Issue',
-                        'council'    => optional($i->council)->councilname ?? optional($i->council)->name ?? '—',
-                        'details'    => trim(($i->title ?? '-') . ($i->owner ? ' · '.$i->owner : '')),
-                        'when'       => optional($i->created_at)->toDateString(),
-                        'amount'     => ucfirst((string) ($i->status ?? 'open')),
-                    ];
-                });
-
-            return $finance->merge($metrics)->merge($projects)->merge($issues)
-                ->sortByDesc('created_at')->take(15)->values()
-                ->map(function ($row) {
-                    unset($row['created_at']);
-                    return $row;
-                })
-                ->all();
-        } catch (\Throwable $e) {
-            report($e);
-            return [];
-        }
+        return view('livewire.lcp-dashboard', [
+            'periodStart'      => $this->periodStart,
+            'periodEnd'        => $this->periodEnd,
+            // KPIs
+            'councilsCount'    => $kpis['councilsCount'],
+            'indicatorsCount'  => $kpis['indicatorsCount'],
+            'projectsCount'    => $kpis['projectsCount'],
+            'openIssuesCount'  => $kpis['openIssuesCount'],
+            // Finance
+            'sumRevenueOwn'    => $finance['sumRevenueOwn'],
+            'sumGrantCentral'  => $finance['sumGrantCentral'],
+            'sumExpenditureAll'=> $finance['sumExpenditureAll'],
+            // Lists
+            'issues'           => $issues,
+        ])->layout('layouts.app');
     }
 }
